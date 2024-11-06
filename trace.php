@@ -13,6 +13,8 @@ require __DIR__ . '/vendor/autoload.php';
 // Enable OpenTelemetry fibers
 putenv('OTEL_PHP_FIBERS_ENABLED=true');
 
+putenv('OTEL_SERVICE_NAME=myLaravelService');
+
 // Set up the OpenTelemetry HTTP transport
 $httpTransport = (new OtlpHttpTransportFactory())
     ->create('http://192.168.1.196:4318/v1/traces', 'application/json'); // Replace with your OTLP endpoint
@@ -71,6 +73,9 @@ $app->get('/', function (Request $request, Response $response) use ($tracer) {
         $html .= '<p>No data available.</p>';
     }
 
+    // Add navigation button to the contact page
+    $html .= '<button onclick="location.href=\'/contact\'">Go to Contact Page</button>';
+
     $html .= '</body></html>';
     $response->getBody()->write($html);
 
@@ -101,6 +106,39 @@ $app->get('/contact', function (Request $request, Response $response) use ($trac
         <div>Header</div>
         <div>This is the contact page</div>
         <div>Footer</div>
+
+        <!-- Add navigation button to the contact child route -->
+        <button onclick="location.href=\'/contact/child\'">Contact us</button>
+    </body>
+    </html>';
+
+    $response->getBody()->write($html);
+
+    // End the span
+    $span->end();
+
+    return $response;
+});
+
+// Child route for /contact
+$app->get('/contact/child', function (Request $request, Response $response) use ($tracer) {
+    // Start a new span for the request
+    $span = $tracer->spanBuilder('/mycontact/child')->startSpan();
+
+    // Set attributes for the HTTP method and URL path
+    $span->setAttribute('http.method', $request->getMethod());
+    $span->setAttribute('http.url', (string)$request->getUri()->getPath());
+
+    // Prepare the HTML response for the child route
+    $html = '<!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Contact us</title>
+    </head>
+    <body>
+        <div>we will contact with you shortly</div>
     </body>
     </html>';
 
