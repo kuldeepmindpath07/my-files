@@ -13,7 +13,7 @@ putenv('OTEL_PHP_FIBERS_ENABLED=true');
 putenv('OTEL_SERVICE_NAME=MyServiceName');
 
 // OpenTelemetry transport and tracing setup
-$httpTransport = (new OtlpHttpTransportFactory())->create('http://192.168.1.196:4318/v1/traces', 'application/json');
+$httpTransport = (new OtlpHttpTransportFactory())->create('http://localhost:4318/v1/traces', 'application/json');
 $exporter = new SpanExporter($httpTransport);
 $tracerProvider = new TracerProvider(new SimpleSpanProcessor($exporter));
 $tracer = $tracerProvider->getTracer('MyServiceName');
