@@ -1,90 +1,58 @@
 <?php
 
-use Openelemetry\Contrib\Otlp\OtlpHttpTransportFactory;
-use OpenTelemetry\SDK\Trace\SpanExporter; // Corrected namespace
+use OpenTelemetry\Contrib\Otlp\OtlpHttpTransportFactory;
+use OpenTelemetry\Contrib\Otlp\SpanExporter;
 use OpenTelemetry\SDK\Trace\SpanProcessor\SimpleSpanProcessor;
 use OpenTelemetry\SDK\Trace\TracerProvider;
-use Slim\Factory\AppFactory;
-use Illuminate\Database\Capsule\Manager as Capsule;
-use Illuminate\Validation\ValidationException;
+use OpenTelemetry\API\Trace\TracerInterface;
 
 require __DIR__ . '/vendor/autoload.php';
 
-// Database configuration (assuming you have MySQL configured properly)
-$capsule = new Capsule;
-$capsule->addConnection([
-    'driver' => 'mysql',
-    'host' => '127.0.0.1',
-    'database' => 'my_db_bro',
-    'username' => 'root',
-    'password' => '',
-    'charset' => 'utf8mb4',
-    'collation' => 'utf8mb4_unicode_ci',
-    'prefix' => '',
-]);
-$capsule->setAsGlobal();
-$capsule->bootEloquent();
+// Environment setup
+putenv('OTEL_PHP_FIBERS_ENABLED=true');
+putenv('OTEL_SERVICE_NAME=LaravelService'); // Replace with your service name
 
 // OpenTelemetry transport and tracing setup
-error_log("coming here");
 $httpTransport = (new OtlpHttpTransportFactory())->create('http://localhost:4318/v1/traces', 'application/json');
-error_log("nothinghre");
-$exporter = new SpanExporter($httpTransport); // Corrected namespace
+$exporter = new SpanExporter($httpTransport);
 $tracerProvider = new TracerProvider(new SimpleSpanProcessor($exporter));
-$tracer = $tracerProvider->getTracer('MyServiceName');
+$tracer = $tracerProvider->getTracer('LaravelService');
 
-// Slim app setup
-$app = AppFactory::create();
-$app->addErrorMiddleware(true, true, true);
+// Laravel application setup
+$app = require_once __DIR__ . '/bootstrap/app.php';
+error_log("once error");
 
-// Registration route
-$app->post('/register', function ($request, $response) use ($tracer) {
-    $span = $tracer->spanBuilder('/register')->startSpan();
-    $span->setAttribute('http.method', $request->getMethod());
-    $span->setAttribute('http.url', (string) $request->getUri()->getPath());
+// Register routes
+$app->router->get('/register', ['uses' => 'App\Http\Controllers\AuthController@register_view']);
+error_log("once error2");
 
-    // Get registration data from the request
-    $data = $request->getParsedBody();
+$app->router->post('/register', function () use ($tracer) {
+    error_log("once error3");
     
-    // Validate input
+    // Start a new span for the /register route
+    $span = $tracer->spanBuilder('register_route')->startSpan();
+    $scope = $span->activate();
+
     try {
-        $validation = \Validator::make($data, [
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:users,email',
-            'password' => 'required|string|min:8|confirmed',
-        ]);
+        // Forward the request to the controller
+        $response = (new App\Http\Controllers\AuthController())->register(request());
 
-        if ($validation->fails()) {
-            throw new ValidationException($validation);
-        }
-
-        // Hash the password using PHP's built-in password_hash
-        $hashedPassword = password_hash($data['password'], PASSWORD_BCRYPT);
-
-        // Create a new user
-        \App\Models\User::create([
-            'name' => $data['name'],
-            'email' => $data['email'],
-            'password' => $hashedPassword,
-        ]);
-
-        // Add success message to the response
-        $response->getBody()->write('Registration successful!');
-        $span->end();
-
+        // Set span status
+        $span->setStatus(\OpenTelemetry\SDK\Trace\StatusCode::STATUS_OK);
         return $response;
-    } catch (ValidationException $e) {
-        // Handle validation failure
-        $response->getBody()->write('Validation error: ' . $e->getMessage());
-        $span->end();
-        return $response->withStatus(400);
     } catch (\Exception $e) {
-        // Handle general errors
-        $response->getBody()->write('Error: ' . $e->getMessage());
+        // Log any exceptions to the trace
+        $span->setStatus(\OpenTelemetry\SDK\Trace\StatusCode::STATUS_ERROR, $e->getMessage());
+        throw $e;
+    } finally {
+        // End the span and detach the scope
         $span->end();
-        return $response->withStatus(500);
+        $scope->detach();
     }
 });
 
-// Run the Slim app
-$app->run();
+// Handle the HTTP request (let Laravel's kernel take care of it)
+$response = $app->handle($request = Illuminate\Http\Request::capture());
+
+// Send the response
+$response->send();
