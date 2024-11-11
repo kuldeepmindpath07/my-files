@@ -4,8 +4,11 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\User;
+use OpenTelemetry\Contrib\Otlp\OtlpHttpTransportFactory;
+use OpenTelemetry\Contrib\Otlp\SpanExporter;
 use OpenTelemetry\SDK\Trace\TracerProvider;
-use OpenTelemetry\SDK\Trace\Span;
+use OpenTelemetry\SDK\Trace\SimpleSpanProcessor;
+use OpenTelemetry\SDK\Trace\StatusCode;
 
 class AuthController extends Controller
 {
@@ -13,8 +16,11 @@ class AuthController extends Controller
 
     public function __construct()
     {
-        $tracerProvider = new TracerProvider();
-        $this->tracer = $tracerProvider->getTracer('register-tracer');
+        // Directly instantiate the tracer without using TracerInterface
+        $httpTransport = (new OtlpHttpTransportFactory())->create('http://localhost:4318/v1/traces', 'application/json');
+        $exporter = new SpanExporter($httpTransport);
+        $tracerProvider = new TracerProvider(new SimpleSpanProcessor($exporter));
+        $this->tracer = $tracerProvider->getTracer('LaravelService');
     }
 
     public function index()
@@ -24,7 +30,18 @@ class AuthController extends Controller
 
     public function register_view()
     {
-        return view('auth.register');
+        $span = $this->tracer->spanBuilder('register_view')->startSpan();
+        $scope = $span->activate();
+
+        try {
+            return view('auth.register');
+        } catch (\Exception $e) {
+            $span->setStatus(StatusCode::STATUS_ERROR, $e->getMessage());
+            throw $e;
+        } finally {
+            $span->end();
+            $scope->detach();
+        }
     }
 
     public function login(Request $request)
@@ -34,27 +51,27 @@ class AuthController extends Controller
 
     public function register(Request $request)
     {
-        $span = $this->tracer->spanBuilder('register_user')->startSpan();
+        $span = $this->tracer->spanBuilder('register_action')->startSpan();
         $scope = $span->activate();
 
         try {
-            $span->setAttribute('user.name', $request->name);
-            $span->setAttribute('user.email', $request->email);
-
-            // Create the user
             User::create([
                 'name' => $request->name,
                 'email' => $request->email,
                 'password' => \Hash::make($request->password),
             ]);
 
-            // $span->setStatus(\OpenTelemetry\SDK\Common\Attribute\StatusCode::STATUS_OK);
+            // Set status to OK for the trace
+            $span->setStatus(StatusCode::STATUS_OK);
+
             return redirect()->route('login')->with('success', 'Registration successful!');
         } catch (\Exception $e) {
-            error_log("please give correct user's data");
+            // Set status to ERROR if something goes wrong
+            $span->setStatus(StatusCode::STATUS_ERROR, $e->getMessage());
+            throw $e;
         } finally {
-            $span->end(); // End the span to capture trace data
-            $scope->detach(); // Detach the span from the current context
+            $span->end();
+            $scope->detach();
         }
     }
 }

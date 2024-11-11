@@ -7,7 +7,8 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::post('login',[AuthController::class,'index'])->name('login');
-Route::get('login',[AuthController::class,'login'])->name('login');
-Route::get('register',[AuthController::class,'register_view'])->name('register');
-Route::post('register',[AuthController::class,'register'])->name('register');
+// Register routes
+Route::get('register', [AuthController::class, 'register_view'])->name('register');
+Route::post('register', [AuthController::class, 'register'])->name('register');
+Route::get('login', [AuthController::class, 'index'])->name('login');
+Route::post('login', [AuthController::class, 'login'])->name('login');

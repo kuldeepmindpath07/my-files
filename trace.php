@@ -1,58 +1,100 @@
 <?php
 
+// Include the Laravel autoload file to initialize the app
+require __DIR__ . '/vendor/autoload.php'; // Correct path to vendor/autoload.php
+
+// Initialize OpenTelemetry for tracing
 use OpenTelemetry\Contrib\Otlp\OtlpHttpTransportFactory;
 use OpenTelemetry\Contrib\Otlp\SpanExporter;
-use OpenTelemetry\SDK\Trace\SpanProcessor\SimpleSpanProcessor;
 use OpenTelemetry\SDK\Trace\TracerProvider;
-use OpenTelemetry\API\Trace\TracerInterface;
+use OpenTelemetry\SDK\Trace\SpanProcessor\SimpleSpanProcessor;
+use OpenTelemetry\SDK\Trace\StatusCode;
+use OpenTelemetry\API\Trace\Tracer;
+use OpenTelemetry\SDK\Trace\Span;
 
-require __DIR__ . '/vendor/autoload.php';
-
-// Environment setup
-putenv('OTEL_PHP_FIBERS_ENABLED=true');
-putenv('OTEL_SERVICE_NAME=LaravelService'); // Replace with your service name
-
-// OpenTelemetry transport and tracing setup
 $httpTransport = (new OtlpHttpTransportFactory())->create('http://localhost:4318/v1/traces', 'application/json');
 $exporter = new SpanExporter($httpTransport);
 $tracerProvider = new TracerProvider(new SimpleSpanProcessor($exporter));
 $tracer = $tracerProvider->getTracer('LaravelService');
 
-// Laravel application setup
-$app = require_once __DIR__ . '/bootstrap/app.php';
-error_log("once error");
+// Home route
+// Home route
+function homePage($tracer) {
+    $span = $tracer->spanBuilder('home_page')->startSpan();
+    $scope = $span->activate();
 
-// Register routes
-$app->router->get('/register', ['uses' => 'App\Http\Controllers\AuthController@register_view']);
-error_log("once error2");
+    $html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Home</title></head><body>';
+    $html .= '<h1>Welcome to the Home Page</h1>';
+    $html .= '<a href="/register">Go to Register</a>';
+    $html .= '</body></html>';
 
-$app->router->post('/register', function () use ($tracer) {
-    error_log("once error3");
-    
-    // Start a new span for the /register route
-    $span = $tracer->spanBuilder('register_route')->startSpan();
+    $span->end();
+    $scope->detach();
+
+    return $html;
+}
+
+// Register form route
+function registerPage($tracer) {
+    $span = $tracer->spanBuilder('register_view')->startSpan();
+    $scope = $span->activate();
+
+    $html = '<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><title>Register</title></head><body>';
+    $html .= '<h1>Register Page</h1>';
+    $html .= '<form action="/register" method="POST">
+                <input type="text" name="name" placeholder="Name">
+                <input type="email" name="email" placeholder="Email">
+                <input type="password" name="password" placeholder="Password">
+                <button type="submit">Register</button>
+              </form>';
+    $html .= '</body></html>';
+
+    $span->end();
+    $scope->detach();
+
+    return $html;
+}
+
+// Database connection using mysqli
+function handleRegistration($data, $tracer) {
+    $span = $tracer->spanBuilder('kuldeep registration')->startSpan();
     $scope = $span->activate();
 
     try {
-        // Forward the request to the controller
-        $response = (new App\Http\Controllers\AuthController())->register(request());
+        // MySQL connection with mysqli
+        $servername = "localhost";
+        $username = "root";
+        $password = "";
+        $dbname = "myDb";
 
-        // Set span status
-        $span->setStatus(\OpenTelemetry\SDK\Trace\StatusCode::STATUS_OK);
-        return $response;
+        $conn = new mysqli($servername, $username, $password, $dbname);
+        error_log("error here 1");
+        if ($conn->connect_error) {
+            die("Connection failed: " . $conn->connect_error);
+        }
+
+        $stmt = $conn->prepare('INSERT INTO users (name, email, password) VALUES (?, ?, ?)');
+        $stmt->bind_param('sss', $data['name'], $data['email'], password_hash($data['password'], PASSWORD_DEFAULT));
+        $stmt->execute();
+        $conn->close();
+
+        $span->setStatus(StatusCode::STATUS_OK);
+        return 'Registration Successful!';
     } catch (\Exception $e) {
-        // Log any exceptions to the trace
-        $span->setStatus(\OpenTelemetry\SDK\Trace\StatusCode::STATUS_ERROR, $e->getMessage());
-        throw $e;
+        // $span->setStatus(StatusCode::STATUS_ERROR, $e->getMessage());
+        // throw $e;
+        error_log("its causing error");
     } finally {
-        // End the span and detach the scope
         $span->end();
         $scope->detach();
     }
-});
+}
 
-// Handle the HTTP request (let Laravel's kernel take care of it)
-$response = $app->handle($request = Illuminate\Http\Request::capture());
-
-// Send the response
-$response->send();
+// Run functions based on request (basic routing simulation)
+if ($_SERVER['REQUEST_URI'] == '/register' && $_SERVER['REQUEST_METHOD'] == 'GET') {
+    echo registerPage($tracer);  // Pass tracer here
+} elseif ($_SERVER['REQUEST_URI'] == '/register' && $_SERVER['REQUEST_METHOD'] == 'POST') {
+    echo handleRegistration($_POST, $tracer);  // Pass tracer here as well
+} else {
+    echo homePage($tracer);  // Pass tracer here
+}
