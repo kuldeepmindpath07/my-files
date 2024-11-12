@@ -9,6 +9,7 @@ use OpenTelemetry\SDK\Trace\SpanProcessor\SimpleSpanProcessor;
 use OpenTelemetry\API\Trace\TracerInterface;
 use OpenTelemetry\SDK\Trace\TracerProvider as SDKTracerProvider;
 
+putenv('OTEL_SERVICE_NAME=register-laravel-page');
 class OpenTelemetryServiceProvider extends ServiceProvider
 {
     /**
@@ -23,7 +24,7 @@ class OpenTelemetryServiceProvider extends ServiceProvider
             $exporter = new SpanExporter($httpTransport);
             // Create and return the OpenTelemetry tracer instance
             $tracerProvider = new SDKTracerProvider(new SimpleSpanProcessor($exporter));
-            return $tracerProvider->getTracer('laravel-tracer');
+            return $tracerProvider->getTracer('register-page');
         });
     }
 

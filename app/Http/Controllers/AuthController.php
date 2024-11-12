@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Models\User;
 use OpenTelemetry\API\Trace\TracerInterface;
+use Illuminate\Support\Facades\DB;
 
+DB::enableQueryLog(); 
 class AuthController extends Controller
 {
     protected TracerInterface $tracer;
@@ -30,7 +32,7 @@ class AuthController extends Controller
 
     public function register_view()
     {
-        $span = $this->tracer->spanBuilder('view.register')->startSpan();
+        $span = $this->tracer->spanBuilder('register-view')->startSpan();
         $scope = $span->activate();
         try {
             error_log("here 2");
@@ -59,7 +61,7 @@ class AuthController extends Controller
 
     public function register(Request $request)
     {
-        $span = $this->tracer->spanBuilder('action.register')->startSpan();
+        $span = $this->tracer->spanBuilder('register-action')->startSpan();
         $scope = $span->activate();
 
         try {
@@ -72,7 +74,12 @@ class AuthController extends Controller
             $span->setAttribute('user.name', $request->name);
             $span->setAttribute('user.email', $request->email);
             $span->addEvent('User registered');
-
+            $query = DB::getQueryLog();
+            $span->setAttribute('http.method', $request->method());
+            $span->setAttribute('db.query', $query);
+            
+            // Optionally add the executed query as an event:
+            $span->setAttribute('SQL Query executed', ['query' => json_encode($query)]);
             // Redirect or return success response
             return redirect()->route('login')->with('success', 'Registration successful!');
         } catch (\Exception $e) {
