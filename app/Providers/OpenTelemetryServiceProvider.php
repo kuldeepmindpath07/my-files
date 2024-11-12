@@ -5,8 +5,8 @@ namespace App\Providers;
 use OpenTelemetry\Contrib\Otlp\OtlpHttpTransportFactory;
 use OpenTelemetry\Contrib\Otlp\SpanExporter;
 use Illuminate\Support\ServiceProvider;
+use OpenTelemetry\SDK\Trace\SpanProcessor\SimpleSpanProcessor;
 use OpenTelemetry\API\Trace\TracerInterface;
-use OpenTelemetry\API\Trace\TracerProvider;
 use OpenTelemetry\SDK\Trace\TracerProvider as SDKTracerProvider;
 
 class OpenTelemetryServiceProvider extends ServiceProvider
@@ -22,7 +22,7 @@ class OpenTelemetryServiceProvider extends ServiceProvider
             $httpTransport = (new OtlpHttpTransportFactory())->create('http://localhost:4318/v1/traces', 'application/json');
             $exporter = new SpanExporter($httpTransport);
             // Create and return the OpenTelemetry tracer instance
-            $tracerProvider = new SDKTracerProvider();
+            $tracerProvider = new SDKTracerProvider(new SimpleSpanProcessor($exporter));
             return $tracerProvider->getTracer('laravel-tracer');
         });
     }
