@@ -27,14 +27,4 @@ class OpenTelemetryServiceProvider extends ServiceProvider
             return $tracerProvider->getTracer('register-page');
         });
     }
-
-    /**
-     * Bootstrap any application services.
-     *
-     * @return void
-     */
-    public function boot()
-    {
-        //
-    }
 }

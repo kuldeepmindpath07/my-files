@@ -7,87 +7,65 @@ use App\Models\User;
 use OpenTelemetry\API\Trace\TracerInterface;
 use Illuminate\Support\Facades\DB;
 
-DB::enableQueryLog(); 
 class AuthController extends Controller
 {
-    protected TracerInterface $tracer;
-    public function __construct(TracerInterface $tracer)
-    {
-        error_log("1 heere");
-        $this->tracer = $tracer;
-    }
-
-    // public function index()
-    // {
-    //     $span = $this->tracer->spanBuilder('view.login')->startSpan();
-    //     $scope = $span->activate();
-
-    //     try {
-    //         return view('auth.login');
-    //     } finally {
-    //         $span->end();
-    //         $scope->detach();
-    //     }
-    // }
-
     public function register_view()
     {
-        $span = $this->tracer->spanBuilder('register-view')->startSpan();
-        $scope = $span->activate();
-        try {
-            error_log("here 2");
-            return view('auth.register');
-        } finally { 
-            $span->end();
-            $scope->detach();
-            error_log("here 3");
-        }
+        return view('auth.register');
     }
 
     public function login(Request $request)
     {
-        // $span = $this->tracer->spanBuilder('action.login')->startSpan();
-        // $scope = $span->activate();
-
-        try {
-            // Handle login logic here
-            // For example, dd($request->all()) for testing
-            dd($request->all());
-        } finally {
-            // $span->end();
-            // $scope->detach();
-        }
+        // Handle login logic here
+        error_log(print_r($request->all(), true));  // Log the request data instead of dumping
+        // Optionally use dd('Request received') to confirm the request is being processed
+         // Remove this after confirming it's working
+         return view('auth.login');
     }
 
-    public function register(Request $request)
+
+    public function register(Request $request, TracerInterface $tracer)
     {
-        $span = $this->tracer->spanBuilder('register-action')->startSpan();
-        $scope = $span->activate();
+    // Start the span for the registration process
+    $span = $tracer->spanBuilder('register-action')->startSpan();
+    $scope = $span->activate();
 
-        try {
-            User::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'password' => \Hash::make($request->password),
-            ]);
+    try {
+        // Create the user
+        $span->setAttribute('user.name', $request->name);
+        $span->setAttribute('user.email', $request->email);
 
-            $span->setAttribute('user.name', $request->name);
-            $span->setAttribute('user.email', $request->email);
-            $span->addEvent('User registered');
-            $query = DB::getQueryLog();
-            $span->setAttribute('http.method', $request->method());
-            $span->setAttribute('db.query', $query);
-            
-            // Optionally add the executed query as an event:
-            $span->setAttribute('SQL Query executed', ['query' => json_encode($query)]);
-            // Redirect or return success response
-            return redirect()->route('login')->with('success', 'Registration successful!');
-        } catch (\Exception $e) {
-            $span->recordException($e);
-            throw $e;
-        } finally {
-            $span->end();
-            $scope->detach();
-        }
+        // Optionally, add the database query to the span
+        DB::enableQueryLog(); // Enable query logging to capture the DB queries
+
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => \Hash::make($request->password),
+        ]);
+
+        // After the user is created, capture the database query logs
+        $queries = DB::getQueryLog();
+        $span->setAttribute('db.query', json_encode($queries));
+
+        // Add event to the span
+        $span->addEvent('User registered successfully');
+
+        // You can also add any other relevant data to the span, such as HTTP method and route
+        $span->setAttribute('http.method', $request->method());
+        $span->setAttribute('http.route', 'register');
+
+        // Redirect to the login page with success
+        return redirect()->route('login')->with('success', 'Registration successful!');
+    } catch (\Exception $e) {
+        // If there’s an error, capture the exception in the span
+        $span->recordException($e);
+        throw $e; // Re-throw the exception
+    } finally {
+        // End the span and detach the scope
+        $span->end();
+        $scope->detach();
     }
+  }
+
 }
