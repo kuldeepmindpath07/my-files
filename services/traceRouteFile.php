@@ -1,20 +1,27 @@
 <?php
 
-namespace App\Services;
-
 use OpenTelemetry\API\Trace\TracerInterface;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
 
-function traceRoute(string $name, string $route, string $method, callable $handler, TracerInterface $tracer)
+function withSpan(TracerInterface $tracer, string $spanName, array $attributes = [], \Closure $callback)
 {
-    $span = $tracer->spanBuilder("route-$name-$method")->startSpan();
+    // Start a new span
+    $span = $tracer->spanBuilder($spanName)->startSpan();
     $scope = $span->activate();
 
     try {
-        $span->setAttribute('http.route', $route);
-        $span->setAttribute('http.method', strtoupper($method));
-        return $handler();
+        // Set any attributes on the span
+        foreach ($attributes as $key => $value) {
+            $span->setAttribute($key, $value);
+        }
+
+        // Execute the callback (the actual business logic)
+        return $callback($span);
+    } catch (\Exception $e) {
+        $span->recordException($e);
+        throw $e;
     } finally {
+        // End the span and detach the scope
         $span->end();
         $scope->detach();
     }

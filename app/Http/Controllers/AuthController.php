@@ -24,35 +24,29 @@ class AuthController extends Controller
     }
 
     public function register(Request $request, TracerInterface $tracer)
-    {
-        // Start a specific span for registration action
-        $span = $tracer->spanBuilder('register-action')->startSpan();
-        $scope = $span->activate();
+{
+    // Call the wrapper function with the desired span name and attributes
+    return withSpan($tracer, 'register-action', [
+        'user.name' => $request->name,
+        'user.email' => $request->email
+    ], function ($span) use ($request) {
+        // Log database query to span
+        DB::enableQueryLog();
 
-        try {
-            $span->setAttribute('user.name', $request->name);
-            $span->setAttribute('user.email', $request->email);
+        // Perform the registration logic
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => \Hash::make($request->password),
+        ]);
 
-            // Log database query to span
-            DB::enableQueryLog();
+        // Get the database queries and set them as span attributes
+        $queries = DB::getQueryLog();
+        $span->setAttribute('db.query', json_encode($queries));
+        $span->addEvent('User registered successfully');
 
-            $user = User::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'password' => \Hash::make($request->password),
-            ]);
+        return redirect()->route('login')->with('success', 'Registration successful!');
+    });
+}
 
-            $queries = DB::getQueryLog();
-            $span->setAttribute('db.query', json_encode($queries));
-            $span->addEvent('User registered successfully');
-
-            return redirect()->route('login')->with('success', 'Registration successful!');
-        } catch (\Exception $e) {
-            $span->recordException($e);
-            throw $e;
-        } finally {
-            $span->end();
-            $scope->detach();
-        }
-    }
 }

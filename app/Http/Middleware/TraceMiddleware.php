@@ -7,7 +7,7 @@ use OpenTelemetry\API\Trace\TracerInterface;
 
 class TraceMiddleware
 {
-    protected $tracer;
+    // protected $tracer;
 
     // Inject TracerInterface into the constructor
     public function __construct(TracerInterface $tracer)
@@ -18,16 +18,15 @@ class TraceMiddleware
     public function handle($request, Closure $next)
     {
         // Start a span for the request
-        $span = $this->tracer->spanBuilder('request')->startSpan();
+        $spanName = $request->method() . ' ' . $request->path(); // e.g., "GET /login"
+        $span = $this->tracer->spanBuilder($spanName)->startSpan();
         $scope = $span->activate();
-        
-        error_log("It's coming here");
 
         try {
             // Set attributes or events on the span if needed
             $span->setAttribute('http.method', $request->method());
             $span->setAttribute('http.route', $request->path());
-
+            error_log("again coming");
             // Continue processing the request
             return $next($request);
         } finally {
