@@ -14,6 +14,7 @@ services:
       - "4317:4317" # OTLP gRPC receiver
       - "4318:4318" # OTLP HTTP receiver
       - "55679:55679" # zpages extension
+
   prometheus:
     image: prom/prometheus:latest
     restart: always
@@ -25,17 +26,18 @@ services:
       - ./docker/prometheus.yaml:/etc/prometheus/prometheus.yaml
     ports:
       - "9090:9090" # http://localhost:9090
+
   tempo:
     image: grafana/tempo:latest
     command: ["-config.file=/etc/tempo.yaml"]
     user: root
     volumes:
-      - ./docker/tempo.yaml:/etc/tempo.yaml
-      - ./var/tempo:/tmp/tempo
+      - ./docker/tempo.yaml:/etc/tempo.yaml  # Keep your Tempo configuration file
+      - ./tempoData:/tmp/tempo  # Persist data in the /tempoData directory
     ports:
-      - "3200:3200" # tempo
-      - "1111:4317" # otlp grpc
-      - "1112:4318" # otlp http
+      - "3200:3200"   # Tempo UI and query endpoint
+      - "1111:4317"   # OTLP gRPC receiver
+      - "1112:4318"   # OTLP HTTP receiver
 
   grafana:
     image: grafana/grafana:latest
