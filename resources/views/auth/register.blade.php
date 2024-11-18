@@ -51,4 +51,7 @@
         </div>
     </div>
 </div>
+<a href="{{ url('/home') }}">
+        <button>Go to Home</button>
+    </a>
 </div>

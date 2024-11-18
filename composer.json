@@ -11,6 +11,8 @@
         "laravel/framework": "^11.9",
         "laravel/tinker": "^2.9",
         "open-telemetry/opentelemetry": "^1.0",
+        "open-telemetry/opentelemetry-logger-monolog": "^1.0",
+        "open-telemetry/opentelemetry-php-contrib": "^0.0.17",
         "php-http/httplug": "^2.4",
         "slim/slim": "^4.14"
     },
