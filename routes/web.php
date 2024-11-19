@@ -21,7 +21,7 @@ Route::get('/', function () {
 Route::get('/home', function () {
     error_log("ifslalalalal");
     // Initialize the OTLP transport and exporter
-    $transport = (new OtlpHttpTransportFactory())->create('http://collector:4318/v1/logs', 'application/json');
+        $transport = (new OtlpHttpTransportFactory())->create('http://localhost:4318/v1/logs', 'application/json');
     
     $exporter = new LogsExporter($transport);
     
@@ -35,19 +35,20 @@ Route::get('/home', function () {
     
     $eventLoggerProvider = new EventLoggerProvider($loggerProvider);
     
+    
     $eventLogger = $eventLoggerProvider->getEventLogger('demo', '1.0', 'https://opentelemetry.io/schemas/1.7.1', ['foo' => 'bar']);
    
     // Log an event when the home route is accessed
     $eventLogger->emit(
         name: 'home-accessed',
         body: [
-            'foo' => 'bar',
-            'baz' => 'bat',
-            'msg' => 'Hello world from the home route!',
-            'randomNumber' => rand(1, 100),  // Random number for demonstration
+            // 'foo' => 'bar',
+            // 'baz' => 'bat',
+            // 'msg' => 'Hello world from the home route!',
+            // 'randomNumber' => rand(1, 100),  // Random number for demonstration
         ],
-        timestamp: (new \DateTime())->getTimestamp() * LogRecord::NANOS_PER_SECOND,
-        severityNumber: Severity::INFO,
+        // timestamp: (new \DateTime())->getTimestamp() * LogRecord::NANOS_PER_SECOND,
+        // severityNumber: Severity::INFO,
     );
     error_log("ifslalalaljhgfdsal");
     // Generate a random number and pass it to the view

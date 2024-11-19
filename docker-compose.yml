@@ -40,7 +40,7 @@ services:
       - "1112:4318"   # OTLP HTTP receiver
 
   loki:
-    image: grafana/loki:2.8.2
+    image: grafana/loki:2.8.0
     user: root
     command: -config.file=/etc/loki/local-config.yaml
     volumes:
@@ -49,7 +49,7 @@ services:
     ports:
       - "3100:3100" # Loki query endpoint
       - "1114:4317"   # OTLP gRPC receiver
-      - "1113:4319"   # OTLP HTTP receiver
+      - "1113:4318"   # OTLP HTTP receiver
   grafana:
     image: grafana/grafana:latest
     volumes:

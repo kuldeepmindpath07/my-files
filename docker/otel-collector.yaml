@@ -14,18 +14,24 @@ processors:
     check_interval: 1s
 
 exporters:
-  # Tempo exporter
+  # Tempo exporter (OTLP gRPC)
   otlp/tempo:
-    endpoint: "tempo:4317"  # Use gRPC endpoint
+    endpoint: "localhost:4317"  # Ensure this points to Tempo's gRPC receiver
     tls:
       insecure: true
-      
+
   # Prometheus exporter for metrics
   prometheus:
     endpoint: "0.0.0.0:8889"
     namespace: "otel_collector"
 
-  # Logging exporter to debug trace processing
+  # Loki exporter for logs (OTLP HTTP)
+  otlp/loki:
+    endpoint: "localhost:4318"  # Ensure this points to Loki's HTTP receiver
+    tls:
+      insecure: true
+
+  # Logging exporter for debugging trace processing
   logging:
     verbosity: detailed
 
@@ -35,9 +41,13 @@ service:
       receivers: [otlp]
       processors: [memory_limiter, batch]
       exporters: [otlp/tempo, logging]  # Add logging to see trace activity
-    
+
     metrics:
       receivers: [otlp]
       processors: [batch]
       exporters: [prometheus]
 
+    logs:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [otlp/loki]  # Add Loki exporter to logs pipeline
