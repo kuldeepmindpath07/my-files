@@ -38,7 +38,18 @@ services:
       - "3200:3200"   # Tempo UI and query endpoint
       - "1111:4317"   # OTLP gRPC receiver
       - "1112:4318"   # OTLP HTTP receiver
-
+  loki:
+    image: grafana/loki:2.8.0
+    user: root
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - ./docker/loki-local-config.yaml:/etc/loki/local-config.yaml
+      - ./lokiData:/tmp/loki  # Persist data in the /lokiData directory
+    ports:
+      - "3100:3100" # Loki query endpoint
+      - "1114:4317"   # OTLP gRPC receiver
+      - "1113:4318"   # OTLP HTTP receiver
+      
   grafana:
     image: grafana/grafana:latest
     volumes:

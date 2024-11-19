@@ -19,6 +19,10 @@ exporters:
     endpoint: "tempo:4317"  # Use gRPC endpoint
     tls:
       insecure: true
+  otlp/loki:
+    endpoint: "loki:4318"
+    tls:
+      insecure: true
 
   # Prometheus exporter for metrics
   prometheus:
