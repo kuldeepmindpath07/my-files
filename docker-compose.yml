@@ -49,7 +49,18 @@ services:
       - "3100:3100" # Loki query endpoint
       - "1114:4317"   # OTLP gRPC receiver
       - "1113:4318"   # OTLP HTTP receiver
-      
+
+
+  promtail:
+    image: grafana/promtail:latest
+    container_name: promtail
+    volumes:
+      - ./docker/promtail-config.yaml:/etc/promtail/config.yaml:ro
+      - ./storage/logs:/logs
+    command:
+      - -config.file=/etc/promtail/config.yaml
+
+
   grafana:
     image: grafana/grafana:latest
     volumes:
