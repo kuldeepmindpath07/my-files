@@ -8,6 +8,7 @@
         "php": "^8.2",
         "illuminate/database": "*",
         "illuminate/validation": "*",
+        "jimdo/prometheus_client_php": "^0.6.0",
         "laravel/framework": "^11.9",
         "laravel/tinker": "^2.9",
         "open-telemetry/opentelemetry": "^1.0",
