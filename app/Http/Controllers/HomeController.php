@@ -13,7 +13,7 @@ class HomeController extends Controller
 
         // Check if the request was successful
         if ($response->successful()) {
-            $data = $response->json(); // Get the response data as an array
+            $data = $response->json(); // Get the response data
         } else {
             $data = []; // Handle error accordingly
         }
