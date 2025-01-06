@@ -1,7 +1,9 @@
 pipeline{
     stages{
       stage{
-        echo "this is step for just demo"
+        steps{
+            echo "thisi s gello"
+        }
       }
     }
 }
